@@ -1,6 +1,7 @@
+import os
 import random
 import sys
-import os
+
 import pygame
 
 
@@ -26,7 +27,9 @@ class Ship(pygame.sprite.Sprite):
         """
         super().__init__(groups)
         self.playArea = window
-        self.image = pygame.image.load(resource_path("images/player.png")).convert_alpha()
+        self.image = pygame.image.load(
+            resource_path("images/player.png")
+        ).convert_alpha()
         self.rect = self.image.get_frect(
             center=(self.playArea[0] / 2, self.playArea[1] / 2)
         )
@@ -89,6 +92,24 @@ class Laser(pygame.sprite.Sprite):
             self.kill()
 
 
+class Meteor(pygame.sprite.Sprite):
+    def __init__(self, *groups: _GroupOrGroups[Any], pos, speed, direction) -> None:
+        super().__init__(*groups)
+        self.speed = speed
+        self.image = pygame.image.load(
+            resource_path("images/meteor.png")
+        ).convert_alpha()
+        self.rect = self.image.get_frect(center=pos)
+        self.direction = direction
+
+    def update(self, dt) -> None:
+        self.rect.centery += dt * self.speed
+
+    def move(self, dt):
+        self.rect.centerx += self.direction.x * self.playerSpeed * dt
+        self.rect.centery += self.direction.y * self.playerSpeed * dt
+
+
 class SpaceShooter:
     """
     The main game class responsible for state and the game loop.
@@ -111,6 +132,8 @@ class SpaceShooter:
         self.canShoot = True
         self.tpUseTime = 0
         self.shootTime = 0
+
+
 
     def checkEvents(self):
         """Handle all user input and system events."""
@@ -141,7 +164,6 @@ class SpaceShooter:
             self.tpUseTime = pygame.time.get_ticks()
 
         if keys[pygame.K_SPACE] and self.canShoot:
-            print("shoot")
             Laser(self.allSprites, self.player.rect.center, self.laserSpeed)
             self.canShoot = False
             self.shootTime = pygame.time.get_ticks()
@@ -160,6 +182,9 @@ class SpaceShooter:
             self.canTP = True
         if (self.shootTime + 350) < pygame.time.get_ticks():
             self.canShoot = True
+
+    def sponObjects(self):
+
 
     def run(self):
         """The main game loop."""

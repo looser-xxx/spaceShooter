@@ -93,21 +93,38 @@ class Laser(pygame.sprite.Sprite):
 
 
 class Meteor(pygame.sprite.Sprite):
-    def __init__(self, *groups: _GroupOrGroups[Any], pos, speed, direction) -> None:
-        super().__init__(*groups)
+    def __init__(self, groups, pos, speed, direction, playSpace) -> None:
+        super().__init__(groups)
         self.speed = speed
+        self.playSpace = playSpace
+        print(self.playSpace)
         self.image = pygame.image.load(
             resource_path("images/meteor.png")
         ).convert_alpha()
         self.rect = self.image.get_frect(center=pos)
-        self.direction = direction
+        print(direction)
+        self.direction = pygame.Vector2(direction[0], direction[1])
 
     def update(self, dt) -> None:
-        self.rect.centery += dt * self.speed
+        self.move(dt)
+        if (
+            self.rect.top > self.playSpace[1] + 500
+            or self.rect.top > self.playSpace[0] + 500
+            or self.rect.left < -500
+            or self.rect.left < -500
+        ):
+            self.kill()
 
     def move(self, dt):
-        self.rect.centerx += self.direction.x * self.playerSpeed * dt
-        self.rect.centery += self.direction.y * self.playerSpeed * dt
+        self.rect.centerx += self.direction.x * self.speed * dt
+        self.rect.centery += self.direction.y * self.speed * dt
+
+
+def loadAfterCooldown(eventTime, delay):
+    if (eventTime + delay) < pygame.time.get_ticks():
+        return True
+    else:
+        return False
 
 
 class SpaceShooter:
@@ -121,19 +138,50 @@ class SpaceShooter:
         self.clock = pygame.time.Clock()
         self.window = (1920, 1080)
         self.allSprites = pygame.sprite.Group()
-        self.playerSpeed = 300
-        self.laserSpeed = 2800
-        self.numberOfStars = 50
         self.screen = pygame.display.set_mode(self.window)
+        self.numberOfStars = 50
         self.createStars()
-        self.player = Ship(self.playerSpeed, self.allSprites, self.window)
+        self.setUpMeteors()
+        self.setUpPlayer()
         self.runGame = True
+
+    def setUpMeteors(self):
+        self.meteorSponTime = 0
+        self.canSponMeteor = True
+        self.meteorSpeed = 1000
+        self.meteorSponRate = 1000
+
+    def sponMeteor(self):
+        sponOptionsX = [
+            random.randint(-500, -100),
+            random.randint(self.window[0] + 100, self.window[0] + 500),
+        ]
+        sponOptionsY = [
+            random.randint(-500, -100),
+            random.randint(self.window[1] + 100, self.window[1] + 500),
+        ]
+
+        pos = (random.choice(sponOptionsX), random.choice(sponOptionsY))
+        options = [-2, -1, 1, 2]
+        direction = (random.choice(options), random.randint(-2, 2))
+        Meteor(self.allSprites, pos, self.meteorSpeed, direction, self.window)
+
+    def spawnObjects(self):
+        if self.canSponMeteor:
+            self.sponMeteor()
+            self.canSponMeteor = False
+            self.meteorSponTime = pygame.time.get_ticks()
+
+    def setUpPlayer(self):
+        self.playerSpeed = 300
+        self.player = Ship(self.playerSpeed, self.allSprites, self.window)
         self.canTP = True
         self.canShoot = True
         self.tpUseTime = 0
         self.shootTime = 0
-
-
+        self.laserSpeed = 2800
+        self.teleportCoolDownTime = 5000
+        self.laserCoolDownTime = 250
 
     def checkEvents(self):
         """Handle all user input and system events."""
@@ -142,6 +190,14 @@ class SpaceShooter:
                 self.runGame = False
 
         self.keyboardInput()
+        if self.canShoot == False:
+            self.canShoot = loadAfterCooldown(self.shootTime, self.laserCoolDownTime)
+        if self.canTP == False:
+            self.canTP = loadAfterCooldown(self.tpUseTime, self.teleportCoolDownTime)
+        if self.canSponMeteor == False:
+            self.canSponMeteor = loadAfterCooldown(
+                self.meteorSponTime, self.meteorSponRate
+            )
 
     def movePlayer(self, direction):
         self.player.updateDirection(direction)
@@ -177,23 +233,13 @@ class SpaceShooter:
                 self.allSprites,
             )
 
-    def loadTP(self):
-        if (self.tpUseTime + 4000) < pygame.time.get_ticks():
-            self.canTP = True
-        if (self.shootTime + 350) < pygame.time.get_ticks():
-            self.canShoot = True
-
-    def sponObjects(self):
-
-
     def run(self):
         """The main game loop."""
         while self.runGame:
             dt = self.clock.tick() / 1000
-            if self.canTP == False or self.canShoot == False:
-                self.loadTP()
             self.checkEvents()
             self.screen.fill("#212326")
+            self.spawnObjects()
             self.allSprites.update(dt)
             self.allSprites.draw(self.screen)
             pygame.display.flip()

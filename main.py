@@ -5,8 +5,16 @@ import sys
 import pygame
 
 
-def resource_path(relative_path):
-    """Get absolute path to resource, works for dev and for PyInstaller"""
+def resource_path(relative_path) -> str:
+    """
+    Get absolute path to resource, works for dev and for PyInstaller.
+
+    Args:
+        relative_path (str): The relative path to the resource.
+
+    Returns:
+        str: The absolute path to the resource.
+    """
     try:
         # PyInstaller creates a temp folder and stores path in _MEIPASS
         base_path = sys._MEIPASS
@@ -24,6 +32,11 @@ class Ship(pygame.sprite.Sprite):
     def __init__(self, speed, groups, window) -> None:
         """
         Initialize the ship with a specific speed.
+
+        Args:
+            speed (float): The movement speed of the ship.
+            groups (pygame.sprite.Group): The sprite groups to add the ship to.
+            window (tuple): The dimensions of the game window.
         """
         super().__init__(groups)
         self.playArea = window
@@ -37,11 +50,19 @@ class Ship(pygame.sprite.Sprite):
         self.playerSpeed = speed
 
     def update(self, dt) -> None:
-        """Update the ship's state each frame."""
+        """
+        Update the ship's state each frame.
+
+        Args:
+            dt (float): Time delta since the last frame.
+        """
         self.move(dt)
         self.checkCollisionWithWalls()
 
-    def checkCollisionWithWalls(self):
+    def checkCollisionWithWalls(self) -> None:
+        """
+        Constrain the ship within the game window boundaries.
+        """
         if self.rect.left < 0:
             self.rect.left = 0
         if self.rect.right > self.playArea[0]:
@@ -51,7 +72,13 @@ class Ship(pygame.sprite.Sprite):
         if self.rect.bottom > self.playArea[1]:
             self.rect.bottom = self.playArea[1]
 
-    def updateDirection(self, direction):
+    def updateDirection(self, direction) -> None:
+        """
+        Update the ship's movement direction based on input key.
+
+        Args:
+            direction (str): The key corresponding to the direction ('w', 'a', 's', 'd').
+        """
         if direction == "w":
             self.direction.y = -1
         if direction == "s":
@@ -61,8 +88,13 @@ class Ship(pygame.sprite.Sprite):
         if direction == "d":
             self.direction.x = 1
 
-    def move(self, dt):
-        """Move the ship based on its direction and delta time."""
+    def move(self, dt) -> None:
+        """
+        Move the ship based on its direction and delta time.
+
+        Args:
+            dt (float): Time delta since the last frame.
+        """
         self.rect.centerx += self.direction.x * self.playerSpeed * dt
         self.rect.centery += self.direction.y * self.playerSpeed * dt
 
@@ -73,27 +105,66 @@ class Stars(pygame.sprite.Sprite):
     """
 
     def __init__(self, x, y, groups) -> None:
-        """Initialize a star at a specific position."""
+        """
+        Initialize a star at a specific position.
+
+        Args:
+            x (int): The x-coordinate.
+            y (int): The y-coordinate.
+            groups (pygame.sprite.Group): The sprite groups this star belongs to.
+        """
         super().__init__(groups)
         self.image = pygame.image.load(resource_path("images/star.png")).convert_alpha()
         self.rect = self.image.get_frect(center=(x, y))
 
 
 class Laser(pygame.sprite.Sprite):
+    """
+    Represents a projectile fired by the player.
+    """
+
     def __init__(self, groups, pos, speed) -> None:
+        """
+        Initialize the laser.
+
+        Args:
+            groups (pygame.sprite.Group): The sprite groups to add the laser to.
+            pos (tuple): The starting position (x, y).
+            speed (float): The speed of the laser.
+        """
         super().__init__(groups)
         self.image = pygame.image.load(resource_path("images/laser.png"))
         self.rect = self.image.get_frect(center=pos)
         self.speed = speed
 
     def update(self, dt) -> None:
+        """
+        Move the laser and remove it if it goes off-screen.
+
+        Args:
+            dt (float): Time delta since the last frame.
+        """
         self.rect.centery -= dt * self.speed
         if self.rect.bottom < 0:
             self.kill()
 
 
 class Meteor(pygame.sprite.Sprite):
+    """
+    Represents an obstacle that flies across the screen.
+    """
+
     def __init__(self, groups, pos, speed, direction, playSpace) -> None:
+        """
+        Initialize the meteor with speed, direction, and spawn position.
+
+        Args:
+            groups (pygame.sprite.Group): The sprite groups to add the meteor to.
+            pos (tuple): The starting position (x, y).
+            speed (float): The speed of the meteor.
+            direction (tuple): The direction vector (x, y).
+            playSpace (tuple): The dimensions of the game window.
+        """
         super().__init__(groups)
         self.speed = speed
         self.playSpace = playSpace
@@ -106,6 +177,12 @@ class Meteor(pygame.sprite.Sprite):
         self.direction = pygame.Vector2(direction[0], direction[1])
 
     def update(self, dt) -> None:
+        """
+        Update meteor position and check for out-of-bounds.
+
+        Args:
+            dt (float): Time delta since the last frame.
+        """
         self.move(dt)
         if (
             self.rect.top > self.playSpace[1] + 500
@@ -115,12 +192,28 @@ class Meteor(pygame.sprite.Sprite):
         ):
             self.kill()
 
-    def move(self, dt):
+    def move(self, dt) -> None:
+        """
+        Move the meteor based on direction and speed.
+
+        Args:
+            dt (float): Time delta since the last frame.
+        """
         self.rect.centerx += self.direction.x * self.speed * dt
         self.rect.centery += self.direction.y * self.speed * dt
 
 
-def loadAfterCooldown(eventTime, delay):
+def loadAfterCooldown(eventTime, delay) -> bool:
+    """
+    Check if a cooldown period has passed.
+
+    Args:
+        eventTime (int): The timestamp when the event last occurred.
+        delay (int): The duration of the cooldown in milliseconds.
+
+    Returns:
+        bool: True if the cooldown has passed, False otherwise.
+    """
     if (eventTime + delay) < pygame.time.get_ticks():
         return True
     else:
@@ -133,7 +226,9 @@ class SpaceShooter:
     """
 
     def __init__(self) -> None:
-        """Initialize game resources, window, and entities."""
+        """
+        Initialize game resources, window, and entities.
+        """
         pygame.init()
         self.clock = pygame.time.Clock()
         self.window = (1920, 1080)
@@ -145,13 +240,19 @@ class SpaceShooter:
         self.setUpPlayer()
         self.runGame = True
 
-    def setUpMeteors(self):
+    def setUpMeteors(self) -> None:
+        """
+        Initialize meteor spawning parameters.
+        """
         self.meteorSponTime = 0
         self.canSponMeteor = True
         self.meteorSpeed = 1000
         self.meteorSponRate = 1000
 
-    def sponMeteor(self):
+    def sponMeteor(self) -> None:
+        """
+        Spawn a single meteor at a random position outside the screen.
+        """
         sponOptionsX = [
             random.randint(-500, -100),
             random.randint(self.window[0] + 100, self.window[0] + 500),
@@ -166,13 +267,19 @@ class SpaceShooter:
         direction = (random.choice(options), random.randint(-2, 2))
         Meteor(self.allSprites, pos, self.meteorSpeed, direction, self.window)
 
-    def spawnObjects(self):
+    def spawnObjects(self) -> None:
+        """
+        Manage object spawning logic (e.g., meteors).
+        """
         if self.canSponMeteor:
             self.sponMeteor()
             self.canSponMeteor = False
             self.meteorSponTime = pygame.time.get_ticks()
 
-    def setUpPlayer(self):
+    def setUpPlayer(self) -> None:
+        """
+        Initialize player settings and cooldowns.
+        """
         self.playerSpeed = 300
         self.player = Ship(self.playerSpeed, self.allSprites, self.window)
         self.canTP = True
@@ -183,8 +290,10 @@ class SpaceShooter:
         self.teleportCoolDownTime = 5000
         self.laserCoolDownTime = 250
 
-    def checkEvents(self):
-        """Handle all user input and system events."""
+    def checkEvents(self) -> None:
+        """
+        Handle all user input and system events.
+        """
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.runGame = False
@@ -199,10 +308,19 @@ class SpaceShooter:
                 self.meteorSponTime, self.meteorSponRate
             )
 
-    def movePlayer(self, direction):
+    def movePlayer(self, direction) -> None:
+        """
+        Handle player movement input.
+
+        Args:
+            direction (str): The direction key pressed.
+        """
         self.player.updateDirection(direction)
 
-    def keyboardInput(self):
+    def keyboardInput(self) -> None:
+        """
+        Check and respond to keyboard presses.
+        """
         keys = pygame.key.get_pressed()
         if keys[pygame.K_w]:
             self.movePlayer("w")
@@ -224,8 +342,10 @@ class SpaceShooter:
             self.canShoot = False
             self.shootTime = pygame.time.get_ticks()
 
-    def createStars(self):
-        """Populate the background with star sprites."""
+    def createStars(self) -> None:
+        """
+        Populate the background with star sprites.
+        """
         for i in range(self.numberOfStars):
             Stars(
                 random.randint(0, self.window[0]),
@@ -233,8 +353,10 @@ class SpaceShooter:
                 self.allSprites,
             )
 
-    def run(self):
-        """The main game loop."""
+    def run(self) -> None:
+        """
+        The main game loop.
+        """
         while self.runGame:
             dt = self.clock.tick() / 1000
             self.checkEvents()
@@ -245,8 +367,10 @@ class SpaceShooter:
             pygame.display.flip()
 
 
-def main():
-    """Entry point for the application."""
+def main() -> None:
+    """
+    Entry point for the application.
+    """
     print("welcome to space shooter")
     game = SpaceShooter()
     game.run()

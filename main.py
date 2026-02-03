@@ -22,3 +22,13 @@ class Ship(pygame.sprite.Sprite):
     def move(self, dt):
         """Move the ship based on its direction and delta time."""
         self.rect.centerx += self.direction.x * self.playerSpeed * dt
+
+class Stars(pygame.sprite.Sprite):
+    """
+    Represents a background star decoration.
+    """
+    def __init__(self, x, y, groups) -> None:
+        """Initialize a star at a specific position."""
+        super().__init__(groups)
+        self.image = pygame.image.load("./images/star.png").convert_alpha()
+        self.rect = self.image.get_frect(center=(x, y))

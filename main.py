@@ -89,7 +89,7 @@ class SpaceShooter:
         self.window = (1920, 1080)
         self.allSprites = pygame.sprite.Group()
         self.playerSpeed = 300
-        self.laserSpeed = 800
+        self.laserSpeed = 2800
         self.numberOfStars = 50
         self.screen = pygame.display.set_mode(self.window)
         self.createStars()
@@ -127,8 +127,12 @@ class SpaceShooter:
             self.player.direction.update(random.randint(-1, 1), random.randint(-1, 1))
             self.canTP = False
             self.tpUseTime = pygame.time.get_ticks()
-        if keys[pygame.K_SPACE]:
+
+        if keys[pygame.K_SPACE] and self.canShoot:
+            print("shoot")
             Laser(self.allSprites, self.player.rect.center, self.laserSpeed)
+            self.canShoot = False
+            self.shootTime = pygame.time.get_ticks()
 
     def createStars(self):
         """Populate the background with star sprites."""
@@ -140,16 +144,16 @@ class SpaceShooter:
             )
 
     def loadTP(self):
-        print(self.tpUseTime)
-        print(pygame.time.get_ticks())
         if (self.tpUseTime + 4000) < pygame.time.get_ticks():
             self.canTP = True
+        if (self.shootTime + 350) < pygame.time.get_ticks():
+            self.canShoot = True
 
     def run(self):
         """The main game loop."""
         while self.runGame:
             dt = self.clock.tick() / 1000
-            if self.canTP == False:
+            if self.canTP == False or self.canShoot == False:
                 self.loadTP()
             self.checkEvents()
             self.screen.fill("#212326")

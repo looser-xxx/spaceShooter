@@ -13,14 +13,38 @@ class Ship(pygame.sprite.Sprite):
         Initialize the ship with a specific speed.
         """
         super().__init__(groups)
+        self.playArea = window
         self.image = pygame.image.load("./images/player.png").convert_alpha()
-        self.rect = self.image.get_frect(center=(window[0] / 2, window[1] / 2))
+        self.rect = self.image.get_frect(
+            center=(self.playArea[0] / 2, self.playArea[1] / 2)
+        )
         self.direction = pygame.Vector2(1, 1)
         self.playerSpeed = speed
 
-    def update(self, x, y) -> None:
+    def update(self, dt) -> None:
         """Update the ship's state each frame."""
-        self.direction.update(x, y)
+        self.move(dt)
+        self.checkCollisionWithWalls()
+
+    def checkCollisionWithWalls(self):
+        if self.rect.left < 0:
+            self.rect.left = 0
+        if self.rect.right > self.playArea[0]:
+            self.rect.right = self.playArea[0]
+        if self.rect.top < 0:
+            self.rect.top = 0
+        if self.rect.bottom > self.playArea[1]:
+            self.rect.bottom = self.playArea[1]
+
+    def updateDirection(self, direction):
+        if direction == "w":
+            self.direction.y = -1
+        if direction == "s":
+            self.direction.y = 1
+        if direction == "a":
+            self.direction.x = -1
+        if direction == "d":
+            self.direction.x = 1
 
     def move(self, dt):
         """Move the ship based on its direction and delta time."""
@@ -47,6 +71,8 @@ class SpaceShooter:
 
     def __init__(self) -> None:
         """Initialize game resources, window, and entities."""
+        pygame.init()
+        self.clock = pygame.time.Clock()
         self.window = (1920, 1080)
         self.allSprites = pygame.sprite.Group()
         self.playerSpeed = 300
@@ -55,26 +81,38 @@ class SpaceShooter:
         self.createStars()
         self.player = Ship(self.playerSpeed, self.allSprites, self.window)
         self.runGame = True
+        self.canTP = True
+        self.canShoot = True
+        self.tpUseTime = 0
+        self.shootTime = 0
 
     def checkEvents(self):
         """Handle all user input and system events."""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.runGame = False
-    def movePlayer(x,y):
-        self.player.update(x,y):
-        
+
+        self.keyboardInput()
+
+    def movePlayer(self, direction):
+        self.player.updateDirection(direction)
 
     def keyboardInput(self):
         keys = pygame.key.get_pressed()
         if keys[pygame.K_w]:
-            pass
+            self.movePlayer("w")
         if keys[pygame.K_s]:
-            pass
+            self.movePlayer("s")
         if keys[pygame.K_a]:
-            pass
+            self.movePlayer("a")
         if keys[pygame.K_d]:
-            pass
+            self.movePlayer("d")
+        if keys[pygame.K_t] and self.canTP:
+            self.player.rect.centerx = random.randint(0, self.window[0])
+            self.player.rect.centery = random.randint(0, self.window[1])
+            self.player.direction.update(random.randint(-1, 1), random.randint(-1, 1))
+            self.canTP = False
+            self.tpUseTime = pygame.time.get_ticks()
 
     def createStars(self):
         """Populate the background with star sprites."""
@@ -85,11 +123,21 @@ class SpaceShooter:
                 self.allSprites,
             )
 
+    def loadTP(self):
+        print(self.tpUseTime)
+        print(pygame.time.get_ticks())
+        if (self.tpUseTime + 4000) < pygame.time.get_ticks():
+            self.canTP = True
+
     def run(self):
         """The main game loop."""
         while self.runGame:
+            dt = self.clock.tick() / 1000
+            if self.canTP == False:
+                self.loadTP()
             self.checkEvents()
             self.screen.fill("#212326")
+            self.allSprites.update(dt)
             self.allSprites.draw(self.screen)
             pygame.display.flip()
 

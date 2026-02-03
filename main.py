@@ -32,3 +32,40 @@ class Stars(pygame.sprite.Sprite):
         super().__init__(groups)
         self.image = pygame.image.load("./images/star.png").convert_alpha()
         self.rect = self.image.get_frect(center=(x, y))
+
+class SpaceShooter:
+    """
+    The main game class responsible for state and the game loop.
+    """
+    def __init__(self) -> None:
+        """Initialize game resources, window, and entities."""
+        self.window = (1920, 1080)
+        self.allSprites = pygame.sprite.Group()
+        self.playerSpeed = 300
+        self.numberOfStars = 50
+        self.screen = pygame.display.set_mode(self.window)
+        self.createStars()
+        self.player = Ship(self.playerSpeed, self.allSprites, self.window)
+        self.runGame = True
+
+    def checkEvents(self):
+        """Handle all user input and system events."""
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.runGame = False
+
+    def keyboardInput(self):
+        keys = pygame.key.get_pressed()
+
+    def createStars(self):
+        """Populate the background with star sprites."""
+        for i in range(self.numberOfStars):
+            Stars(random.randint(0, self.window[0]), random.randint(0, self.window[1]), self.allSprites)
+
+    def run(self):
+        """The main game loop."""
+        while self.runGame:
+            self.checkEvents()
+            self.screen.fill("#212326")
+            self.allSprites.draw(self.screen)
+            pygame.display.flip()

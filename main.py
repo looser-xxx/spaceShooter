@@ -1,6 +1,18 @@
 import random
-
+import sys
+import os
 import pygame
+
+
+def resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller"""
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 
 class Ship(pygame.sprite.Sprite):
@@ -14,7 +26,7 @@ class Ship(pygame.sprite.Sprite):
         """
         super().__init__(groups)
         self.playArea = window
-        self.image = pygame.image.load("./images/player.png").convert_alpha()
+        self.image = pygame.image.load(resource_path("images/player.png")).convert_alpha()
         self.rect = self.image.get_frect(
             center=(self.playArea[0] / 2, self.playArea[1] / 2)
         )
@@ -60,14 +72,14 @@ class Stars(pygame.sprite.Sprite):
     def __init__(self, x, y, groups) -> None:
         """Initialize a star at a specific position."""
         super().__init__(groups)
-        self.image = pygame.image.load("./images/star.png").convert_alpha()
+        self.image = pygame.image.load(resource_path("images/star.png")).convert_alpha()
         self.rect = self.image.get_frect(center=(x, y))
 
 
 class Laser(pygame.sprite.Sprite):
     def __init__(self, groups, pos, speed) -> None:
         super().__init__(groups)
-        self.image = pygame.image.load("./images/laser.png")
+        self.image = pygame.image.load(resource_path("images/laser.png"))
         self.rect = self.image.get_frect(center=pos)
         self.speed = speed
 

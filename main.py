@@ -69,3 +69,12 @@ class SpaceShooter:
             self.screen.fill("#212326")
             self.allSprites.draw(self.screen)
             pygame.display.flip()
+
+def main():
+    """Entry point for the application."""
+    print("welcome to space shooter")
+    game = SpaceShooter()
+    game.run()
+
+if __name__ == "__main__":
+    main()

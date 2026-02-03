@@ -64,6 +64,19 @@ class Stars(pygame.sprite.Sprite):
         self.rect = self.image.get_frect(center=(x, y))
 
 
+class Laser(pygame.sprite.Sprite):
+    def __init__(self, groups, pos, speed) -> None:
+        super().__init__(groups)
+        self.image = pygame.image.load("./images/laser.png")
+        self.rect = self.image.get_frect(center=pos)
+        self.speed = speed
+
+    def update(self, dt) -> None:
+        self.rect.centery -= dt * self.speed
+        if self.rect.bottom < 0:
+            self.kill()
+
+
 class SpaceShooter:
     """
     The main game class responsible for state and the game loop.
@@ -76,6 +89,7 @@ class SpaceShooter:
         self.window = (1920, 1080)
         self.allSprites = pygame.sprite.Group()
         self.playerSpeed = 300
+        self.laserSpeed = 800
         self.numberOfStars = 50
         self.screen = pygame.display.set_mode(self.window)
         self.createStars()
@@ -113,6 +127,8 @@ class SpaceShooter:
             self.player.direction.update(random.randint(-1, 1), random.randint(-1, 1))
             self.canTP = False
             self.tpUseTime = pygame.time.get_ticks()
+        if keys[pygame.K_SPACE]:
+            Laser(self.allSprites, self.player.rect.center, self.laserSpeed)
 
     def createStars(self):
         """Populate the background with star sprites."""

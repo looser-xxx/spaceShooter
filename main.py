@@ -1,3 +1,4 @@
+import math
 import os
 import random
 import sys
@@ -22,6 +23,23 @@ def resource_path(relative_path) -> str:
         base_path = os.path.abspath(".")
 
     return os.path.join(base_path, relative_path)
+
+
+def loadAfterCooldown(eventTime, delay) -> bool:
+    """
+    Check if a cooldown period has passed.
+
+    Args:
+        eventTime (int): The timestamp when the event last occurred.
+        delay (int): The duration of the cooldown in milliseconds.
+
+    Returns:
+        bool: True if the cooldown has passed, False otherwise.
+    """
+    if (eventTime + delay) < pygame.time.get_ticks():
+        return True
+    else:
+        return False
 
 
 class Ship(pygame.sprite.Sprite):
@@ -168,12 +186,10 @@ class Meteor(pygame.sprite.Sprite):
         super().__init__(groups)
         self.speed = speed
         self.playSpace = playSpace
-        print(self.playSpace)
         self.image = pygame.image.load(
             resource_path("images/meteor.png")
         ).convert_alpha()
         self.rect = self.image.get_frect(center=pos)
-        print(direction)
         self.direction = pygame.Vector2(direction[0], direction[1])
 
     def update(self, dt) -> None:
@@ -203,21 +219,10 @@ class Meteor(pygame.sprite.Sprite):
         self.rect.centery += self.direction.y * self.speed * dt
 
 
-def loadAfterCooldown(eventTime, delay) -> bool:
-    """
-    Check if a cooldown period has passed.
-
-    Args:
-        eventTime (int): The timestamp when the event last occurred.
-        delay (int): The duration of the cooldown in milliseconds.
-
-    Returns:
-        bool: True if the cooldown has passed, False otherwise.
-    """
-    if (eventTime + delay) < pygame.time.get_ticks():
-        return True
-    else:
-        return False
+class tempRect(pygame.sprite.Sprite):
+    def __init__(self, groups, x, y) -> None:
+        super().__init__(groups)
+        pass
 
 
 class SpaceShooter:
@@ -249,6 +254,9 @@ class SpaceShooter:
         self.meteorSpeed = 1000
         self.meteorSponRate = 1000
 
+    def findSponPoint(self):
+        pass
+
     def sponMeteor(self) -> None:
         """
         Spawn a single meteor at a random position outside the screen.
@@ -265,7 +273,13 @@ class SpaceShooter:
         pos = (random.choice(sponOptionsX), random.choice(sponOptionsY))
         options = [-2, -1, 1, 2]
         direction = (random.choice(options), random.randint(-2, 2))
-        Meteor(self.allSprites, pos, self.meteorSpeed, direction, self.window)
+        Meteor(
+            self.allSprites,
+            pos,
+            random.randint(int(self.meteorSpeed / 2), self.meteorSpeed),
+            direction,
+            self.window,
+        )
 
     def spawnObjects(self) -> None:
         """
@@ -275,6 +289,34 @@ class SpaceShooter:
             self.sponMeteor()
             self.canSponMeteor = False
             self.meteorSponTime = pygame.time.get_ticks()
+
+        self.draw_aim_line()
+
+    def draw_aim_line(self):
+        # 1. Define how long the line MUST be (e.g., 200 pixels)
+        radius = 320
+
+        # 2. Get Start (Player) and Target (Mouse)
+        start_pos = pygame.Vector2(self.player.rect.center)
+        mouse_pos = pygame.Vector2(pygame.mouse.get_pos())
+
+        # 3. Get the Direction
+        direction_vector = mouse_pos - start_pos
+
+        # Safety check: avoid crash if mouse is perfectly on player
+        if direction_vector.length() > 0:
+
+            # 4. Normalize (Make length 1) and Scale (Make length 'radius')
+            direction_normalized = direction_vector.normalize()
+            fixed_length_vector = direction_normalized * radius
+
+            # 5. Calculate the FINAL position
+            self.tpPos = start_pos + fixed_length_vector
+
+            # 6. Draw the line
+            # CHECK THIS LINE CAREFULLY:
+            # We draw from 'start_pos' to 'end_pos' (NOT mouse_pos)
+            pygame.draw.line(self.screen, "red", start_pos, self.tpPos, 2)
 
     def setUpPlayer(self) -> None:
         """
@@ -288,6 +330,7 @@ class SpaceShooter:
         self.shootTime = 0
         self.laserSpeed = 2800
         self.teleportCoolDownTime = 5000
+        self.tpPos = (0, 0)
         self.laserCoolDownTime = 250
 
     def checkEvents(self) -> None:
@@ -322,6 +365,7 @@ class SpaceShooter:
         Check and respond to keyboard presses.
         """
         keys = pygame.key.get_pressed()
+        mouse = pygame.mouse.get_pressed()
         if keys[pygame.K_w]:
             self.movePlayer("w")
         if keys[pygame.K_s]:
@@ -331,13 +375,12 @@ class SpaceShooter:
         if keys[pygame.K_d]:
             self.movePlayer("d")
         if keys[pygame.K_t] and self.canTP:
-            self.player.rect.centerx = random.randint(0, self.window[0])
-            self.player.rect.centery = random.randint(0, self.window[1])
-            self.player.direction.update(random.randint(-1, 1), random.randint(-1, 1))
+            self.player.rect.centerx, self.player.rect.centery = self.tpPos
+            # self.player.direction.update(random.randint(-1, 1), random.randint(-1, 1))
             self.canTP = False
             self.tpUseTime = pygame.time.get_ticks()
 
-        if keys[pygame.K_SPACE] and self.canShoot:
+        if mouse[0] and self.canShoot:
             Laser(self.allSprites, self.player.rect.center, self.laserSpeed)
             self.canShoot = False
             self.shootTime = pygame.time.get_ticks()

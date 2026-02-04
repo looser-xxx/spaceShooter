@@ -1,4 +1,3 @@
-import math
 import os
 import random
 import sys
@@ -61,6 +60,7 @@ class Ship(pygame.sprite.Sprite):
         self.image = pygame.image.load(
             resource_path("images/player.png")
         ).convert_alpha()
+        self.image = pygame.transform.scale(self.image, (69.5, 97.7))
         self.rect = self.image.get_frect(
             center=(self.playArea[0] / 2, self.playArea[1] / 2)
         )
@@ -122,7 +122,7 @@ class Stars(pygame.sprite.Sprite):
     Represents a background star decoration.
     """
 
-    def __init__(self, x, y, groups) -> None:
+    def __init__(self, x, y, groups, speed, screen, size, image, angle) -> None:
         """
         Initialize a star at a specific position.
 
@@ -132,8 +132,25 @@ class Stars(pygame.sprite.Sprite):
             groups (pygame.sprite.Group): The sprite groups this star belongs to.
         """
         super().__init__(groups)
-        self.image = pygame.image.load(resource_path("images/star.png")).convert_alpha()
+        self.orignalImagje = image
+        self.orignalImagje = pygame.transform.scale(self.orignalImagje, (size, size))
+        self.image = self.orignalImagje
         self.rect = self.image.get_frect(center=(x, y))
+        self.speed = speed
+        self.playArea = screen
+        self.angle = angle
+        self.rotSpeed = 10
+
+    def update(self, dt) -> None:
+        self.rect.bottom += dt * self.speed
+        self.rotate(dt)
+        if self.rect.top > self.playArea[1]:
+            self.kill()
+
+    def rotate(self, dt):
+        self.angle += self.rotSpeed * dt
+        self.image = pygame.transform.rotate(self.orignalImagje, self.angle)
+        self.rect = self.image.get_frect(center=self.rect.center)
 
 
 class Laser(pygame.sprite.Sprite):
@@ -152,6 +169,7 @@ class Laser(pygame.sprite.Sprite):
         """
         super().__init__(groups)
         self.image = pygame.image.load(resource_path("images/laser.png"))
+        self.image = pygame.transform.scale(self.image, (15.5, 97.7))
         self.rect = self.image.get_frect(center=pos)
         self.speed = speed
 
@@ -240,10 +258,17 @@ class SpaceShooter:
         self.allSprites = pygame.sprite.Group()
         self.screen = pygame.display.set_mode(self.window)
         self.numberOfStars = 50
+        self.loadBackGround()
         self.createStars()
         self.setUpMeteors()
         self.setUpPlayer()
         self.runGame = True
+
+    def loadBackGround(self):
+        self.backgroundImage = pygame.image.load(
+            resource_path("images/backGround.png")
+        ).convert()
+        self.backgroundImage = pygame.transform.scale(self.backgroundImage, self.window)
 
     def setUpMeteors(self) -> None:
         """
@@ -252,7 +277,7 @@ class SpaceShooter:
         self.meteorSponTime = 0
         self.canSponMeteor = True
         self.meteorSpeed = 1000
-        self.meteorSponRate = 1000
+        self.meteorSponRate = 500
 
     def findSponPoint(self):
         pass
@@ -389,11 +414,17 @@ class SpaceShooter:
         """
         Populate the background with star sprites.
         """
+        image = pygame.image.load(resource_path("images/star.png")).convert_alpha()
         for i in range(self.numberOfStars):
             Stars(
                 random.randint(0, self.window[0]),
                 random.randint(0, self.window[1]),
                 self.allSprites,
+                10,
+                self.window,
+                20,
+                image,
+                random.randint(0, 360),
             )
 
     def run(self) -> None:
@@ -404,6 +435,7 @@ class SpaceShooter:
             dt = self.clock.tick() / 1000
             self.checkEvents()
             self.screen.fill("#212326")
+            self.screen.blit(self.backgroundImage, (0, 0))
             self.spawnObjects()
             self.allSprites.update(dt)
             self.allSprites.draw(self.screen)

@@ -2,9 +2,11 @@ import math
 import os
 import random
 import sys
-from fractions import Fraction
 
 import pygame
+
+
+# --- Utility Functions ---
 
 
 def resource_path(relative_path) -> str:
@@ -41,6 +43,166 @@ def loadAfterCooldown(eventTime, delay) -> bool:
         return True
     else:
         return False
+
+
+# --- Sprite Classes ---
+
+
+class Stars(pygame.sprite.Sprite):
+    """
+    Represents a background star decoration.
+    """
+
+    def __init__(self, x, y, groups, speed, screen, size, image, angle) -> None:
+        """
+        Initialize a star at a specific position.
+
+        Args:
+            x (int): The x-coordinate.
+            y (int): The y-coordinate.
+            groups (pygame.sprite.Group): The sprite groups this star belongs to.
+            speed (float): The speed at which the star moves down.
+            screen (tuple): The screen dimensions.
+            size (int): The size of the star.
+            image (pygame.Surface): The image of the star.
+            angle (float): The initial rotation angle.
+        """
+        self._layer = 0
+        super().__init__(groups)
+        self.orignalImagje = image
+        self.orignalImagje = pygame.transform.scale(self.orignalImagje, (size, size))
+        self.image = self.orignalImagje
+        self.rect = self.image.get_frect(center=(x, y))
+        self.speed = speed
+        self.playArea = screen
+        self.angle = angle
+        self.rotSpeed = 10
+
+    def update(self, dt) -> None:
+        """
+        Update the star's position and rotation.
+
+        Args:
+            dt (float): Time delta since the last frame.
+        """
+        self.rect.bottom += dt * self.speed
+        self.rotate(dt)
+        if self.rect.top > self.playArea[1]:
+            self.kill()
+
+    def rotate(self, dt):
+        """
+        Rotate the star based on its rotation speed and delta time.
+
+        Args:
+            dt (float): Time delta since the last frame.
+        """
+        self.angle += self.rotSpeed * dt
+        self.image = pygame.transform.rotate(self.orignalImagje, self.angle)
+        self.rect = self.image.get_frect(center=self.rect.center)
+
+
+class Meteor(pygame.sprite.Sprite):
+    """
+    Represents an obstacle that flies across the screen.
+    """
+
+    def __init__(self, groups, pos, speed, direction, playSpace) -> None:
+        """
+        Initialize the meteor with speed, direction, and spawn position.
+
+        Args:
+            groups (pygame.sprite.Group): The sprite groups to add the meteor to.
+            pos (tuple): The starting position (x, y).
+            speed (float): The speed of the meteor.
+            direction (tuple): The direction vector (x, y).
+            playSpace (tuple): The dimensions of the game window.
+        """
+        self._layer = 1
+        super().__init__(groups)
+        self.speed = speed
+        self.playSpace = playSpace
+        self.image = pygame.image.load(
+            resource_path("images/meteor.png")
+        ).convert_alpha()
+        self.rect = self.image.get_frect(center=pos)
+        self.direction = pygame.Vector2(direction[0], direction[1])
+
+    def update(self, dt) -> None:
+        """
+        Update meteor position and check for out-of-bounds.
+
+        Args:
+            dt (float): Time delta since the last frame.
+        """
+        self.move(dt)
+        if (
+            self.rect.top > self.playSpace[1] + 500
+            or self.rect.top > self.playSpace[0] + 500
+            or self.rect.left < -500
+            or self.rect.left < -500
+        ):
+            self.kill()
+
+    def move(self, dt) -> None:
+        """
+        Move the meteor based on direction and speed.
+
+        Args:
+            dt (float): Time delta since the last frame.
+        """
+        self.rect.centerx += self.direction.x * self.speed * dt
+        self.rect.centery += self.direction.y * self.speed * dt
+
+
+class Laser(pygame.sprite.Sprite):
+    """
+    Represents a projectile fired by the player.
+    """
+
+    def __init__(self, groups, pos, speed, angle) -> None:
+        """
+        Initialize the laser.
+
+        Args:
+            groups (pygame.sprite.Group): The sprite groups to add the laser to.
+            pos (tuple): The starting position (x, y).
+            speed (float): The speed of the laser.
+            angle (float): The angle at which the laser is fired.
+        """
+        self._layer = 2
+        super().__init__(groups)
+        self.image = pygame.image.load(resource_path("images/laser.png"))
+        self.image = pygame.transform.scale(self.image, (15.5, 97.7))
+        self.image = pygame.transform.rotate(self.image, angle)
+        self.rect = self.image.get_frect(center=pos)
+        self.speed = speed
+        self.angleFactor = pygame.Vector2(0, 0)
+        self.angle = angle
+        self.pos = self.rect.center
+
+    def update(self, dt) -> None:
+        """
+        Move the laser and remove it if it goes off-screen.
+
+        Args:
+            dt (float): Time delta since the last frame.
+        """
+        print(self.angleFactor.x)
+        print(self.angleFactor.y)
+        self.rect.center = self.pos
+        self.pos += self.angleFactor * dt * 1000
+
+        if self.rect.bottom < -15 or self.rect.bottom > 1920:
+            self.kill()
+        self.findAngle()
+
+    def findAngle(self):
+        """
+        Calculate the movement vector based on the firing angle.
+        """
+        rad = math.radians(self.angle)
+        self.angleFactor.update(-math.sin(rad), -math.cos(rad))
 
 
 class Ship(pygame.sprite.Sprite):
@@ -124,151 +286,36 @@ class Ship(pygame.sprite.Sprite):
         self.direction.update(0, 0)
 
     def rotate(self, angle):
+        """
+        Rotate the ship to a specific angle.
+
+        Args:
+            angle (float): The target rotation angle.
+        """
         oldCenter = self.rect.center
         self.image = pygame.transform.rotate(self.orignalImagge, angle)
         self.rect = self.image.get_frect(center=oldCenter)
 
 
-class Stars(pygame.sprite.Sprite):
-    """
-    Represents a background star decoration.
-    """
-
-    def __init__(self, x, y, groups, speed, screen, size, image, angle) -> None:
-        """
-        Initialize a star at a specific position.
-
-        Args:
-            x (int): The x-coordinate.
-            y (int): The y-coordinate.
-            groups (pygame.sprite.Group): The sprite groups this star belongs to.
-        """
-        self._layer = 0
-        super().__init__(groups)
-        self.orignalImagje = image
-        self.orignalImagje = pygame.transform.scale(self.orignalImagje, (size, size))
-        self.image = self.orignalImagje
-        self.rect = self.image.get_frect(center=(x, y))
-        self.speed = speed
-        self.playArea = screen
-        self.angle = angle
-        self.rotSpeed = 10
-
-    def update(self, dt) -> None:
-        self.rect.bottom += dt * self.speed
-        self.rotate(dt)
-        if self.rect.top > self.playArea[1]:
-            self.kill()
-
-    def rotate(self, dt):
-        self.angle += self.rotSpeed * dt
-        self.image = pygame.transform.rotate(self.orignalImagje, self.angle)
-        self.rect = self.image.get_frect(center=self.rect.center)
-
-
-class Laser(pygame.sprite.Sprite):
-    """
-    Represents a projectile fired by the player.
-    """
-
-    def __init__(self, groups, pos, speed, angle) -> None:
-        """
-        Initialize the laser.
-
-        Args:
-            groups (pygame.sprite.Group): The sprite groups to add the laser to.
-            pos (tuple): The starting position (x, y).
-            speed (float): The speed of the laser.
-        """
-        self._layer = 2
-        super().__init__(groups)
-        self.image = pygame.image.load(resource_path("images/laser.png"))
-        self.image = pygame.transform.scale(self.image, (15.5, 97.7))
-        self.image = pygame.transform.rotate(self.image, angle)
-        self.rect = self.image.get_frect(center=pos)
-        self.speed = speed
-        self.angleFactor = pygame.Vector2(0, 0)
-        self.angle = angle
-        self.pos = self.rect.center
-
-    def update(self, dt) -> None:
-        """
-        Move the laser and remove it if it goes off-screen.
-
-        Args:
-            dt (float): Time delta since the last frame.
-        """
-        print(self.angleFactor.x)
-        print(self.angleFactor.y)
-        self.rect.center = self.pos
-        self.pos += self.angleFactor * dt * 1000
-
-        if self.rect.bottom < -15 or self.rect.bottom > 1920:
-            self.kill()
-        self.findAngle()
-
-    def findAngle(self):
-        rad = math.radians(self.angle)
-        self.angleFactor.update(-math.sin(rad), -math.cos(rad))
-
-
-class Meteor(pygame.sprite.Sprite):
-    """
-    Represents an obstacle that flies across the screen.
-    """
-
-    def __init__(self, groups, pos, speed, direction, playSpace) -> None:
-        """
-        Initialize the meteor with speed, direction, and spawn position.
-
-        Args:
-            groups (pygame.sprite.Group): The sprite groups to add the meteor to.
-            pos (tuple): The starting position (x, y).
-            speed (float): The speed of the meteor.
-            direction (tuple): The direction vector (x, y).
-            playSpace (tuple): The dimensions of the game window.
-        """
-        self._layer = 1
-        super().__init__(groups)
-        self.speed = speed
-        self.playSpace = playSpace
-        self.image = pygame.image.load(
-            resource_path("images/meteor.png")
-        ).convert_alpha()
-        self.rect = self.image.get_frect(center=pos)
-        self.direction = pygame.Vector2(direction[0], direction[1])
-
-    def update(self, dt) -> None:
-        """
-        Update meteor position and check for out-of-bounds.
-
-        Args:
-            dt (float): Time delta since the last frame.
-        """
-        self.move(dt)
-        if (
-            self.rect.top > self.playSpace[1] + 500
-            or self.rect.top > self.playSpace[0] + 500
-            or self.rect.left < -500
-            or self.rect.left < -500
-        ):
-            self.kill()
-
-    def move(self, dt) -> None:
-        """
-        Move the meteor based on direction and speed.
-
-        Args:
-            dt (float): Time delta since the last frame.
-        """
-        self.rect.centerx += self.direction.x * self.speed * dt
-        self.rect.centery += self.direction.y * self.speed * dt
-
-
 class tempRect(pygame.sprite.Sprite):
+    """
+    A temporary rectangle sprite (placeholder).
+    """
+
     def __init__(self, groups, x, y) -> None:
+        """
+        Initialize the temporary rectangle.
+
+        Args:
+            groups (pygame.sprite.Group): The sprite groups this belongs to.
+            x (int): x-coordinate.
+            y (int): y-coordinate.
+        """
         super().__init__(groups)
         pass
+
+
+# --- Main Game Engine ---
 
 
 class SpaceShooter:
@@ -295,7 +342,36 @@ class SpaceShooter:
         self.playerAngle = 0
         self.dt = 0
 
+    # --- Initialization & Setup ---
+
+    def setUpPlayer(self) -> None:
+        """
+        Initialize player settings and cooldowns.
+        """
+        self.playerSpeed = 300
+        self.player = Ship(self.playerSpeed, self.allSprites, self.window)
+        self.canTP = True
+        self.canShoot = True
+        self.tpUseTime = 0
+        self.shootTime = 0
+        self.laserSpeed = 2800
+        self.teleportCoolDownTime = 5000
+        self.tpPos = (0, 0)
+        self.laserCoolDownTime = 150
+
+    def setUpMeteors(self) -> None:
+        """
+        Initialize meteor spawning parameters.
+        """
+        self.meteorSponTime = 0
+        self.canSponMeteor = True
+        self.meteorSpeed = 1000
+        self.meteorSponRate = 500
+
     def setUpStars(self):
+        """
+        Initialize parameters for star spawning.
+        """
         image = pygame.image.load(resource_path("images/player.png")).convert_alpha()
         self.starInfoForSpon = {
             "spon": [True, True, True, True, True, True],
@@ -309,44 +385,43 @@ class SpaceShooter:
         }
 
     def loadBackGround(self):
+        """
+        Load and scale the background image.
+        """
         self.backgroundImage = pygame.image.load(
             resource_path("images/backGround.png")
         ).convert()
         self.backgroundImage = pygame.transform.scale(self.backgroundImage, self.window)
 
-    def setUpMeteors(self) -> None:
+    def createStars(self) -> None:
         """
-        Initialize meteor spawning parameters.
+        Populate the background with initial star sprites.
         """
-        self.meteorSponTime = 0
-        self.canSponMeteor = True
-        self.meteorSpeed = 1000
-        self.meteorSponRate = 500
+        image = pygame.image.load(resource_path("images/star.png")).convert_alpha()
+        for i in range(self.numberOfStars):
+            Stars(
+                random.randint(0, self.window[0]),
+                random.randint(0, self.window[1]),
+                self.allSprites,
+                10,
+                self.window,
+                20,
+                image,
+                random.randint(0, 360),
+            )
 
-    def findSponPoint(self):
-        pass
+    # --- Spawning Logic ---
 
-    def sponStars(self, data):
+    def spawnObjects(self) -> None:
+        """
+        Manage object spawning logic (e.g., meteors).
+        """
+        if self.canSponMeteor:
+            self.sponMeteor()
+            self.canSponMeteor = False
+            self.meteorSponTime = pygame.time.get_ticks()
 
-        if data["spon"]:
-            for j in range(data["itemCount"]):
-                y = 0
-                if data["y"] > 0:
-                    y = random.random(0, data["y"])
-                else:
-                    y = random.randint(data["y"], 0)
-                for i in range(data["amount"][j]):
-                    Stars(
-                        random.randint(0, data["x"]),
-                        y,
-                        self.allSprites,
-                        data["speed"][j],
-                        self.window,
-                        data["size"][j],
-                        data["image"],
-                        random.randint(0, 360),
-                    )
-                data["spon"] = False
+        self.draw_aim_line()
 
     def sponMeteor(self) -> None:
         """
@@ -372,18 +447,108 @@ class SpaceShooter:
             self.window,
         )
 
-    def spawnObjects(self) -> None:
+    def sponStars(self, data):
         """
-        Manage object spawning logic (e.g., meteors).
-        """
-        if self.canSponMeteor:
-            self.sponMeteor()
-            self.canSponMeteor = False
-            self.meteorSponTime = pygame.time.get_ticks()
+        Spawn stars based on provided configuration data.
 
-        self.draw_aim_line()
+        Args:
+            data (dict): Star configuration parameters.
+        """
+        if data["spon"]:
+            for j in range(data["itemCount"]):
+                y = 0
+                if data["y"] > 0:
+                    y = random.random(0, data["y"])
+                else:
+                    y = random.randint(data["y"], 0)
+                for i in range(data["amount"][j]):
+                    Stars(
+                        random.randint(0, data["x"]),
+                        y,
+                        self.allSprites,
+                        data["speed"][j],
+                        self.window,
+                        data["size"][j],
+                        data["image"],
+                        random.randint(0, 360),
+                    )
+                data["spon"] = False
+
+    def findSponPoint(self):
+        """
+        Logic for finding a spawn point (Placeholder).
+        """
+        pass
+
+    # --- Input & Event Handling ---
+
+    def checkEvents(self) -> None:
+        """
+        Handle all user input and system events.
+        """
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.runGame = False
+
+        self.keyboardInput()
+        if self.canShoot == False:
+            self.canShoot = loadAfterCooldown(self.shootTime, self.laserCoolDownTime)
+        if self.canTP == False:
+            self.canTP = loadAfterCooldown(self.tpUseTime, self.teleportCoolDownTime)
+        if self.canSponMeteor == False:
+            self.canSponMeteor = loadAfterCooldown(
+                self.meteorSponTime, self.meteorSponRate
+            )
+
+    def keyboardInput(self) -> None:
+        """
+        Check and respond to keyboard presses.
+        """
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_w]:
+            self.movePlayer("w")
+        if keys[pygame.K_s]:
+            self.movePlayer("s")
+        if keys[pygame.K_a]:
+            self.movePlayer("a")
+        if keys[pygame.K_d]:
+            self.movePlayer("d")
+        if keys[pygame.K_t] and self.canTP:
+            self.player.rect.centerx, self.player.rect.centery = self.tpPos
+            self.canTP = False
+            self.tpUseTime = pygame.time.get_ticks()
+
+        if keys[pygame.K_SPACE] and self.canShoot:
+            Laser(
+                self.allSprites,
+                self.player.rect.center,
+                self.laserSpeed,
+                self.playerAngle,
+            )
+            self.canShoot = False
+            self.shootTime = pygame.time.get_ticks()
+
+        if keys[pygame.K_RIGHT]:
+            self.playerAngle += 150 * self.dt
+        if keys[pygame.K_LEFT]:
+            self.playerAngle -= 150 * self.dt
+        self.player.rotate(self.playerAngle)
+
+    def movePlayer(self, direction) -> None:
+        """
+        Handle player movement input.
+
+        Args:
+            direction (str): The direction key pressed ('w', 'a', 's', 'd').
+        """
+        self.player.updateDirection(direction)
+
+    # --- Visuals & Rendering ---
 
     def draw_aim_line(self):
+        """
+        Draw a targeting line from the player towards the mouse position.
+        """
         # 1. Define how long the line MUST be (e.g., 200 pixels)
         radius = 320
 
@@ -405,104 +570,9 @@ class SpaceShooter:
             self.tpPos = start_pos + fixed_length_vector
 
             # 6. Draw the line
-            # CHECK THIS LINE CAREFULLY:
-            # We draw from 'start_pos' to 'end_pos' (NOT mouse_pos)
             pygame.draw.line(self.screen, "red", start_pos, self.tpPos, 2)
 
-    def setUpPlayer(self) -> None:
-        """
-        Initialize player settings and cooldowns.
-        """
-        self.playerSpeed = 300
-        self.player = Ship(self.playerSpeed, self.allSprites, self.window)
-        self.canTP = True
-        self.canShoot = True
-        self.tpUseTime = 0
-        self.shootTime = 0
-        self.laserSpeed = 2800
-        self.teleportCoolDownTime = 5000
-        self.tpPos = (0, 0)
-        self.laserCoolDownTime = 150
-
-    def checkEvents(self) -> None:
-        """
-        Handle all user input and system events.
-        """
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.runGame = False
-
-        self.keyboardInput()
-        if self.canShoot == False:
-            self.canShoot = loadAfterCooldown(self.shootTime, self.laserCoolDownTime)
-        if self.canTP == False:
-            self.canTP = loadAfterCooldown(self.tpUseTime, self.teleportCoolDownTime)
-        if self.canSponMeteor == False:
-            self.canSponMeteor = loadAfterCooldown(
-                self.meteorSponTime, self.meteorSponRate
-            )
-
-    def movePlayer(self, direction) -> None:
-        """
-        Handle player movement input.
-
-        Args:
-            direction (str): The direction key pressed.
-        """
-        self.player.updateDirection(direction)
-
-    def keyboardInput(self) -> None:
-        """
-        Check and respond to keyboard presses.
-        """
-        keys = pygame.key.get_pressed()
-        mouse = pygame.mouse.get_pressed()
-        if keys[pygame.K_w]:
-            self.movePlayer("w")
-        if keys[pygame.K_s]:
-            self.movePlayer("s")
-        if keys[pygame.K_a]:
-            self.movePlayer("a")
-        if keys[pygame.K_d]:
-            self.movePlayer("d")
-        if keys[pygame.K_t] and self.canTP:
-            self.player.rect.centerx, self.player.rect.centery = self.tpPos
-            # self.player.direction.update(random.randint(-1, 1), random.randint(-1, 1))
-            self.canTP = False
-            self.tpUseTime = pygame.time.get_ticks()
-
-        if keys[pygame.K_SPACE] and self.canShoot:
-            Laser(
-                self.allSprites,
-                self.player.rect.center,
-                self.laserSpeed,
-                self.playerAngle,
-            )
-            self.canShoot = False
-            self.shootTime = pygame.time.get_ticks()
-
-        if keys[pygame.K_RIGHT]:
-            self.playerAngle += 150 * self.dt
-        if keys[pygame.K_LEFT]:
-            self.playerAngle -= 150 * self.dt
-        self.player.rotate(self.playerAngle)
-
-    def createStars(self) -> None:
-        """
-        Populate the background with star sprites.
-        """
-        image = pygame.image.load(resource_path("images/star.png")).convert_alpha()
-        for i in range(self.numberOfStars):
-            Stars(
-                random.randint(0, self.window[0]),
-                random.randint(0, self.window[1]),
-                self.allSprites,
-                10,
-                self.window,
-                20,
-                image,
-                random.randint(0, 360),
-            )
+    # --- Game Loop ---
 
     def run(self) -> None:
         """
@@ -517,6 +587,9 @@ class SpaceShooter:
             self.allSprites.update(self.dt)
             self.allSprites.draw(self.screen)
             pygame.display.flip()
+
+
+# --- Application Entry Point ---
 
 
 def main() -> None:
